@@ -15,27 +15,17 @@ using namespace std;
     static const BaseType_t app_cpu = 1;
 #endif
 
-std::string msg = "The quick black dog jumped over the lazy brown fox.";
-
 static TaskHandle_t task1 = NULL;
-static TaskHandle_t task2 = NULL;
 
-void startTask1(void *param){
-    int msg_lgth = msg.length();
-
+void testTask(void *param){
+    int a = 1;
+    int b[100]; //This is 400 bytes and initially exceeds the 1024 allocated to the task (768 + 400).
     while(true){
-        for (size_t i = 0; i < msg_lgth; i++){
-            std::cout << msg.at(i);
+        for (size_t i = 0; i < 100; i++){
+            b[i] = a + 1;
         }
-        std::cout << std::endl;
+        std::cout << b[0] << std::endl;
         vTaskDelay(1000 / MS);
-    }
-}
-
-void startTask2(void *param){
-    while(true){
-        std::cout << "*";
-        vTaskDelay(100 / MS);
     }
 }
 
@@ -50,31 +40,11 @@ void app_main() {
     std::cout << " with priority ";
     std::cout << uxTaskPriorityGet(NULL) << std::endl;
 
-    xTaskCreatePinnedToCore(startTask1,
+    xTaskCreatePinnedToCore(testTask,
                             "Task 1",
                             1024,
                             NULL,
                             1,
                             &task1,
                             app_cpu);
-
-    xTaskCreatePinnedToCore(startTask2,
-                            "Task 2",
-                            1024,
-                            NULL,
-                            2,
-                            &task2,
-                            app_cpu);
-
-    for (size_t i = 0; i < 3; i++){
-        vTaskSuspend(task2);
-        vTaskDelay(2000 / MS);
-        vTaskResume(task2);
-        vTaskDelay(2000 / MS);
-    }
-
-    if (task1 != NULL){
-        vTaskDelete(task1);
-        task1 = NULL;
-    }
 }
