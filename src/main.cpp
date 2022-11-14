@@ -48,6 +48,9 @@ void testTask(void *param){
                 ptr[i] = 3;
             }
         }        
+
+        //Add code to free memory.
+        vPortFree(ptr);
     
         //Number will reduce until 0 and crash unless memory if freed.
         std::cout << "Heap before malloc (bytes): ";  
