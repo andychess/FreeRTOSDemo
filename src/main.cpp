@@ -42,7 +42,7 @@ void app_main() {
 
     xTaskCreatePinnedToCore(testTask,
                             "Task 1",
-                            1024,
+                            1500,
                             NULL,
                             1,
                             &task1,
