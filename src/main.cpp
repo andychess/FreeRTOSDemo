@@ -35,9 +35,20 @@ void testTask(void *param){
         //Another war to see memory, this time in bytes.
         std::cout << "Heap before malloc (bytes): ";  
         std::cout << xPortGetFreeHeapSize() << std::endl;
-    
 
-        vTaskDelay(1000 / MS);
+        //Example of NOT freeing memory.
+        int *ptr = (int *)malloc(1024 * sizeof(int));
+
+        //Dummy code to prevent compiler optimising code away.
+        for (size_t i = 0; i < 1024; i++){
+            ptr[i] = 3;
+        }        
+    
+        //Number will reduce until 0 and crash unless memory if freed.
+        std::cout << "Heap before malloc (bytes): ";  
+        std::cout << xPortGetFreeHeapSize() << std::endl;
+
+        vTaskDelay(100 / MS);
     }
 }
 
