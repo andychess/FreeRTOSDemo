@@ -25,6 +25,18 @@ void testTask(void *param){
             b[i] = a + 1;
         }
         std::cout << b[0] << std::endl;
+
+        //A useful way to see stack remaining.
+        std::cout << "High water mark (in words!): ";  
+        //Multiply by 4 to get bytes. 
+        //If this approaches zero it means memory is insufficient for the task.
+        std::cout << uxTaskGetStackHighWaterMark(NULL) << std::endl;
+
+        //Another war to see memory, this time in bytes.
+        std::cout << "Heap before malloc (bytes): ";  
+        std::cout << xPortGetFreeHeapSize() << std::endl;
+    
+
         vTaskDelay(1000 / MS);
     }
 }
