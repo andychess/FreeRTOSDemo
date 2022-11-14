@@ -39,9 +39,14 @@ void testTask(void *param){
         //Example of NOT freeing memory.
         int *ptr = (int *)malloc(1024 * sizeof(int));
 
-        //Dummy code to prevent compiler optimising code away.
-        for (size_t i = 0; i < 1024; i++){
-            ptr[i] = 3;
+        //Checking ptr for NULL avoids a crash.
+        if (ptr == NULL){
+            std::cout << "Insufficient Heap." << std::endl;
+        }else{
+            //Dummy code to prevent compiler optimising code away.
+            for (size_t i = 0; i < 1024; i++){
+                ptr[i] = 3;
+            }
         }        
     
         //Number will reduce until 0 and crash unless memory if freed.
