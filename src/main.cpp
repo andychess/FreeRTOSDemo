@@ -26,8 +26,8 @@ void printMessage(void *param){
     while(true){
         if (xQueueReceive(msg_queue, (void *)&item, 0) == pdTRUE) 
             std::cout << item << std::endl;
+        vTaskDelay(1000 / MS);
     }
-    vTaskDelay(1000 / MS);
 }
 
 extern "C" void app_main();
@@ -58,6 +58,6 @@ void app_main() {
             std::cout << "Queue full." << std::endl;
 
         num++;
-        vTaskDelay(1000 / MS);   
+        vTaskDelay(500 / MS);   
     }
 }
