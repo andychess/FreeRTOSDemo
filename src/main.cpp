@@ -4,6 +4,7 @@
 #include <cstring>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 
 using namespace std;
 
@@ -15,49 +16,18 @@ using namespace std;
     static const BaseType_t app_cpu = 1;
 #endif
 
-static TaskHandle_t task1 = NULL;
+//Simple que example.
+static const uint8_t msg_queue_lgth = 5;
 
-void testTask(void *param){
-    int a = 1;
-    int b[100]; //This is 400 bytes and initially exceeds the 1024 allocated to the task (768 + 400).
+static QueueHandle_t msg_queue;
+
+void printMessage(void *param){
+    int item = 1;
     while(true){
-        for (size_t i = 0; i < 100; i++){
-            b[i] = a + 1;
-        }
-        std::cout << b[0] << std::endl;
-
-        //A useful way to see stack remaining.
-        std::cout << "High water mark (in words!): ";  
-        //Multiply by 4 to get bytes. 
-        //If this approaches zero it means memory is insufficient for the task.
-        std::cout << uxTaskGetStackHighWaterMark(NULL) << std::endl;
-
-        //Another war to see memory, this time in bytes.
-        std::cout << "Heap before malloc (bytes): ";  
-        std::cout << xPortGetFreeHeapSize() << std::endl;
-
-        //Example of NOT freeing memory.
-        int *ptr = (int *)malloc(1024 * sizeof(int));
-
-        //Checking ptr for NULL avoids a crash.
-        if (ptr == NULL){
-            std::cout << "Insufficient Heap." << std::endl;
-        }else{
-            //Dummy code to prevent compiler optimising code away.
-            for (size_t i = 0; i < 1024; i++){
-                ptr[i] = 3;
-            }
-        }        
-
-        //Add code to free memory.
-        vPortFree(ptr);
-    
-        //Number will reduce until 0 and crash unless memory if freed.
-        std::cout << "Heap before malloc (bytes): ";  
-        std::cout << xPortGetFreeHeapSize() << std::endl;
-
-        vTaskDelay(100 / MS);
+        if (xQueueReceive(msg_queue, (void *)&item, 0) == pdTRUE) 
+            std::cout << item << std::endl;
     }
+    vTaskDelay(1000 / MS);
 }
 
 extern "C" void app_main();
@@ -71,11 +41,23 @@ void app_main() {
     std::cout << " with priority ";
     std::cout << uxTaskPriorityGet(NULL) << std::endl;
 
-    xTaskCreatePinnedToCore(testTask,
-                            "Task 1",
+    msg_queue = xQueueCreate(msg_queue_lgth, sizeof(int));
+
+    xTaskCreatePinnedToCore(printMessage,
+                            "Print Msg",
                             1500,
                             NULL,
-                            1,
-                            &task1,
+                            tskIDLE_PRIORITY,
+                            NULL,
                             app_cpu);
+
+    while (true){
+        static int num = 0;
+
+        if (xQueueSend(msg_queue, (void *)&num, 10) != pdTRUE)
+            std::cout << "Queue full." << std::endl;
+
+        num++;
+        vTaskDelay(1000 / MS);   
+    }
 }
