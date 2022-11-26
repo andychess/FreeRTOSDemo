@@ -1,63 +1,55 @@
-#include <iostream>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "driver/uart.h"
 #include "freertos/queue.h"
+#include "esp_log.h"
+#include "soc/uart_struct.h"
 
-using namespace std;
+#define UART_NUM UART_NUM_0
+#define ECHO_TEST_TXD  (1)
+#define ECHO_TEST_RXD  (3)
+#define BUF_SIZE (1024)
 
-#define MS portTICK_PERIOD_MS
+extern "C" int app_main();
 
-#if CONFIG_FREERTOS_UNICORE
-    static const BaseType_t app_cpu = 0;
-#else
-    static const BaseType_t app_cpu = 1;
-#endif
+//an example of echo test without hardware flow control on UART1
+void echoTask(void *params)
+{
+    uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,    
+        .rx_flow_ctrl_thresh = 122,
+        .source_clk = UART_SCLK_APB,
+    };
 
-//Simple que example.
-static const uint8_t msg_queue_lgth = 5;
-
-static QueueHandle_t msg_queue;
-
-void printMessage(void *param){
-    int item = 1;
-    while(true){
-        if (xQueueReceive(msg_queue, (void *)&item, 0) == pdTRUE) 
-            std::cout << item << std::endl;
-        vTaskDelay(1000 / MS);
+    //Configure UART1 parameters
+    uart_param_config(UART_NUM, &uart_config);
+    //Set UART1 pins(TX: IO4, RX: I05)
+    uart_set_pin(UART_NUM, ECHO_TEST_TXD, ECHO_TEST_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    
+    //Install UART driver (we don't need an event queue here)
+    //In this example we don't even use a buffer for sending data.
+    uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
+    uint8_t *data = (uint8_t *)malloc(BUF_SIZE);
+    while(true) {
+        //Read data from UART
+        int len = uart_read_bytes(UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        //Write data back to UART
+        uart_write_bytes(UART_NUM, (const char*) data, len);
     }
 }
 
-extern "C" void app_main();
-
-void app_main() {
-    std::cout << std::endl;
-    std::cout << "---FreeRTOS Demo---" << std::endl;
-    std::cout << std::endl;
-    std::cout << "Setup and loop task running on core: ";
-    std::cout << xPortGetCoreID();
-    std::cout << " with priority ";
-    std::cout << uxTaskPriorityGet(NULL) << std::endl;
-
-    msg_queue = xQueueCreate(msg_queue_lgth, sizeof(int));
-
-    xTaskCreatePinnedToCore(printMessage,
-                            "Print Msg",
-                            1500,
-                            NULL,
-                            tskIDLE_PRIORITY,
-                            NULL,
-                            app_cpu);
-
-    while (true){
-        static int num = 0;
-
-        if (xQueueSend(msg_queue, (void *)&num, 10) != pdTRUE)
-            std::cout << "Queue full." << std::endl;
-
-        num++;
-        vTaskDelay(500 / MS);   
-    }
+int app_main()
+{
+    //A uart read/write example without event queue;
+    xTaskCreate(echoTask, "uart_echo_task", 1024, NULL, 10, NULL);
+    return 1;
 }
