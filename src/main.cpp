@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
+#include "driver/gpio.h"
 #include "nvs_flash.h"
 #include "driver/uart.h"
 #include "freertos/queue.h"
@@ -11,9 +12,11 @@
 #include "soc/uart_struct.h"
 
 #define UART_NUM UART_NUM_0
-#define ECHO_TEST_TXD  (1)
-#define ECHO_TEST_RXD  (3)
-#define BUF_SIZE (1024)
+#define ECHO_TEST_TXD GPIO_NUM_1  
+#define ECHO_TEST_RXD  GPIO_NUM_3
+#define BUF_SIZE 1024
+#define BAUD_RATE 115200
+#define RX_FLW_CTL_THR 122
 
 extern "C" int app_main();
 
@@ -21,12 +24,12 @@ extern "C" int app_main();
 void echoTask(void *params)
 {
     uart_config_t uart_config = {
-        .baud_rate = 115200,
+        .baud_rate = BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,    
-        .rx_flow_ctrl_thresh = 122,
+        .rx_flow_ctrl_thresh = RX_FLW_CTL_THR,
         .source_clk = UART_SCLK_APB,
     };
 
