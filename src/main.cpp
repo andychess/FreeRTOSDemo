@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <iostream>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -20,9 +21,10 @@
 
 extern "C" int app_main();
 
-//an example of echo test without hardware flow control on UART1
-void echoTask(void *params)
-{
+static uint8_t *data;
+static int len = 0;
+
+void initHW(){
     uart_config_t uart_config = {
         .baud_rate = BAUD_RATE,
         .data_bits = UART_DATA_8_BITS,
@@ -40,11 +42,24 @@ void echoTask(void *params)
     
     //Install UART driver (we don't need an event queue here)
     //In this example we don't even use a buffer for sending data.
-    uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
-    uint8_t *data = (uint8_t *)malloc(BUF_SIZE);
+    esp_err_t err = uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
+    std::cout << err << std::endl;
+}
+
+//an example of echo test without hardware flow control on UART1
+void readTask(void *params)
+{
     while(true) {
         //Read data from UART
-        int len = uart_read_bytes(UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        len = uart_read_bytes(UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        //Write data back to UART
+        uart_write_bytes(UART_NUM, (const char*) data, len);
+    }
+}
+
+void writeTask(void *params)
+{
+    while(true) {
         //Write data back to UART
         uart_write_bytes(UART_NUM, (const char*) data, len);
     }
@@ -52,7 +67,9 @@ void echoTask(void *params)
 
 int app_main()
 {
+    initHW();
     //A uart read/write example without event queue;
-    xTaskCreate(echoTask, "uart_echo_task", 1024, NULL, 10, NULL);
+    xTaskCreate(readTask, "uart_read_task", 1024, NULL, 10, NULL);
+    xTaskCreate(writeTask, "uart_write_task", 1024, NULL, 10, NULL);
     return 1;
 }
