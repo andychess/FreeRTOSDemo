@@ -10,7 +10,6 @@
 #include "driver/uart.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
-#include "soc/uart_struct.h"
 
 #define UART_NUM UART_NUM_0
 #define ECHO_TEST_TXD GPIO_NUM_1  
@@ -18,6 +17,8 @@
 #define BUF_SIZE 1024
 #define BAUD_RATE 115200
 #define RX_FLW_CTL_THR 122
+
+static const char *TAG = "UART TEST";
 
 extern "C" int app_main();
 
@@ -34,26 +35,26 @@ void initHW(){
         .rx_flow_ctrl_thresh = RX_FLW_CTL_THR,
         .source_clk = UART_SCLK_APB,
     };
-
-    //Configure UART1 parameters
-    uart_param_config(UART_NUM, &uart_config);
-    //Set UART1 pins(TX: IO4, RX: I05)
-    uart_set_pin(UART_NUM, ECHO_TEST_TXD, ECHO_TEST_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    
-    //Install UART driver (we don't need an event queue here)
-    //In this example we don't even use a buffer for sending data.
-    esp_err_t err = uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
-    std::cout << err << std::endl;
+    ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM, ECHO_TEST_TXD, ECHO_TEST_RXD, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0));
 }
 
-//an example of echo test without hardware flow control on UART1
 void readTask(void *params)
 {
+    std::cout << uart_is_driver_installed(UART_NUM) << std::endl;
+
+    uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
+
     while(true) {
         //Read data from UART
-        len = uart_read_bytes(UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        len = uart_read_bytes(UART_NUM, data, BUF_SIZE, 20 / portTICK_PERIOD_MS);
         //Write data back to UART
-        uart_write_bytes(UART_NUM, (const char*) data, len);
+        uart_write_bytes(UART_NUM, (const char *) data, len);
+        if (len) {
+            data[len] = '\0';
+            ESP_LOGI(TAG, "Recv str: %s", (char *) data);
+        }
     }
 }
 
@@ -61,7 +62,7 @@ void writeTask(void *params)
 {
     while(true) {
         //Write data back to UART
-        uart_write_bytes(UART_NUM, (const char*) data, len);
+        uart_write_bytes(UART_NUM, (const char *) data, len);
     }
 }
 
@@ -69,7 +70,7 @@ int app_main()
 {
     initHW();
     //A uart read/write example without event queue;
-    xTaskCreate(readTask, "uart_read_task", 1024, NULL, 10, NULL);
-    xTaskCreate(writeTask, "uart_write_task", 1024, NULL, 10, NULL);
+    xTaskCreate(readTask, "uart_read_task", 2048, NULL, 10, NULL);
+    //xTaskCreate(writeTask, "uart_write_task",2044, NULL, 10, NULL);
     return 1;
 }
